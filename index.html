@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet Estudiantil - CCUNI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        uni: { maroon: '#800000', gold: '#D4AF37', dark: '#4A0000', light: '#B30000' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #800000; border-radius: 4px; }
+        .slot-btn.active { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .elenco-card { transition: all 0.3s ease; }
+        .elenco-card.selected { border-color: #800000; background-color: #fff5f5; ring: 2px; --tw-ring-color: #800000; }
+        .post-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        .post-card { transition: all 0.3s ease; }
+        .post-img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+        .horario-semanal { display: grid; grid-template-columns: 72px repeat(6, minmax(135px, 1fr)); grid-template-rows: 44px repeat(12, 32px) 24px; min-width: 882px; }
+        .horario-dia { display: flex; align-items: center; justify-content: center; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; font-weight: 700; }
+        .horario-hora { padding: 4px 8px; color: #6b7280; font-size: 12px; text-align: right; }
+        .horario-celda { border-left: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb; }
+        .horario-ensayo { z-index: 1; margin: 3px; padding: 10px; border-left: 4px solid; border-radius: 8px; font-size: 11px; overflow-wrap: anywhere; }
+        .horario-ensayo strong { display: block; line-height: 1.4; }
+        .horario-ensayo span { display: block; margin-top: 6px; font-size: 12px; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden selection:bg-uni-maroon selection:text-white">
+
+    <!-- LOGIN -->
+    <div id="view-login" class="fixed inset-0 z-50 flex items-center justify-center bg-[url('https://upload.wikimedia.org/wikipedia/commons/f/f7/Uni-logo_transparente_granate.png')] bg-no-repeat bg-center bg-[length:40%]">
+        <div class="absolute inset-0 bg-gray-900/85 backdrop-blur-md"></div>
+        <div class="bg-white p-10 rounded-2xl border-t-8 border-uni-maroon shadow-2xl max-w-md w-full z-10 fade-in relative">
+            <div class="text-center flex flex-col items-center space-y-4 mb-8">
+                <div class="w-24 h-24 bg-uni-maroon rounded-full flex items-center justify-center text-white text-4xl font-black shadow-lg">CC</div>
+                <div>
+                    <h1 class="text-3xl font-black text-gray-900 tracking-tight">Mi CCUNI</h1>
+                    <p class="text-[11px] text-uni-gold uppercase tracking-[0.2em] font-bold mt-1">Intranet Estudiantil</p>
+                </div>
+            </div>
+
+            <form id="loginForm" class="space-y-5">
+                <div class="relative">
+                    <i class="fa-solid fa-envelope absolute left-4 top-3.5 text-gray-400 pointer-events-none"></i>
+                    <input id="emailInput" type="email" required placeholder="Correo Institucional (@uni.pe)" class="w-full bg-gray-50 border border-gray-300 rounded-lg pl-12 pr-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-uni-maroon outline-none">
+                </div>
+                <div class="relative">
+                    <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-400 pointer-events-none"></i>
+                    <input id="passwordInput" type="password" required placeholder="Contraseña ORCE" class="w-full bg-gray-50 border border-gray-300 rounded-lg pl-12 pr-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-uni-maroon outline-none">
+                </div>
+                <button type="submit" class="w-full bg-uni-maroon hover:bg-uni-dark text-white font-bold py-3.5 rounded-lg text-sm transition-all shadow-lg flex justify-center items-center gap-2">
+                    Ingresar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- HORARIO -->
+    <div id="view-horario" class="hidden fixed inset-0 z-40 bg-gray-50 overflow-y-auto">
+        <div class="max-w-5xl mx-auto p-8 fade-in">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black text-gray-900"><i class="fa-solid fa-calendar-check text-uni-maroon mr-2"></i> Sincronización Académica</h2>
+                <p class="text-gray-500 mt-2">Marca los bloques de hora donde tienes clases o laboratorios en la UNI (Lunes a Sábado).</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+                <div class="min-w-[800px]">
+                    <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-500 uppercase mb-2">
+                        <div>Hora</div><div>Lunes</div><div>Martes</div><div>Miércoles</div><div>Jueves</div><div>Viernes</div><div>Sábado</div>
+                    </div>
+                    <div id="grid-horario" class="space-y-2">
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button onclick="procesarMatchmaking()" class="bg-gray-900 hover:bg-black text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform active:scale-95">
+                        Analizar Compatibilidad <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MATCH -->
+    <div id="view-match" class="hidden fixed inset-0 z-40 bg-gray-100 overflow-y-auto">
+        <div class="max-w-6xl mx-auto p-8 fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-200 pb-6">
+                <div class="text-center md:text-left">
+                    <h2 class="text-3xl font-black text-gray-900">Matrícula Cultural Flexible</h2>
+                    <p class="text-gray-500 mt-2">Puedes seleccionar <strong>más de un elenco</strong> siempre que tus horarios no colisionen.</p>
+                </div>
+                <button onclick="finalizarMatricula()" class="bg-uni-maroon hover:bg-uni-dark text-white font-black py-4 px-8 rounded-xl shadow-xl transition-transform active:scale-95 text-sm">
+                    Confirmar Matrícula Seleccionada (<span id="selected-count">0</span>) <i class="fa-solid fa-circle-check ml-2"></i>
+                </button>
+            </div>
+
+            <div id="elencos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            </div>
+        </div>
+    </div>
+
+    <!-- INTRANET -->
+    <div id="view-intranet" class="hidden w-full h-full flex bg-gray-100">
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg z-20 shrink-0">
+            <div class="p-6 border-b border-gray-100 text-center">
+                <h2 class="text-2xl font-black text-gray-900">CCUNI</h2>
+                <p class="text-[10px] font-bold text-uni-maroon uppercase tracking-widest">Intranet</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="switchTab('inicio')" id="nav-inicio" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-uni-maroon text-white shadow-md transition-all">
+                    <i class="fa-solid fa-house w-5"></i> Inicio
+                </button>
+                <button onclick="switchTab('mielenco')" id="nav-mielenco" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 hover:text-uni-maroon transition-all">
+                    <i class="fa-solid fa-masks-theater w-5"></i> Mis Elencos (<span id="sidebar-count">0</span>)
+                </button>
+            </nav>
+            <div class="p-4 bg-gray-50 border-t border-gray-100">
+                <div class="flex items-center gap-3 mb-4">
+                    <img src="https://ui-avatars.com/api/?name=Estudiante&background=800000&color=fff" class="w-10 h-10 rounded-full">
+                    <div>
+                        <p class="text-sm font-bold text-gray-900">Estudiante UNI</p>
+                        <p class="text-[10px] font-bold text-gray-500 uppercase">Sistemas - Ciclo VI</p>
+                    </div>
+                </div>
+                <button onclick="resetearSistema()" class="w-full bg-red-100 text-red-600 hover:bg-red-600 hover:text-white font-bold py-2 rounded-lg text-xs transition-colors">
+                    Cerrar y Resetear Datos
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto relative">
+            <div class="w-full h-64 bg-gray-900 relative overflow-hidden shrink-0 shadow-md">
+                <img src="imágenes/banner.jpg" alt="Banner 150 Años" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x400/800000/FFFFFF?text=Banner+CCUNI'">
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+                <div class="absolute bottom-6 left-8 flex items-center gap-4">
+                    <a href="https://www.facebook.com/ceculturaluni?locale=es_LA" target="_blank" class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="https://www.instagram.com/ceculturaluni/?hl=es" target="_blank" class="bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"><i class="fa-brands fa-instagram"></i></a>
+                    <span class="text-white font-bold text-sm tracking-wide ml-2 drop-shadow-md">Síguenos en nuestras redes oficiales</span>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <!-- TAB INICIO -->
+                <div id="tab-inicio" class="block fade-in space-y-6">
+                    <h3 class="text-2xl font-black text-gray-900">Muro de Novedades</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 bg-uni-maroon rounded-full flex items-center justify-center text-white text-xs"><i class="fa-solid fa-bullhorn"></i></div>
+                                <div><p class="font-bold text-sm text-gray-900">Coordinación CCUNI</p><p class="text-[10px] text-gray-500">Hace 2 horas</p></div>
+                            </div>
+                            <p class="text-sm text-gray-700 mb-3">¡Bienvenidos al semestre 2026-II! El sistema ahora soporta matrículas múltiples simultáneas sin cruces de horarios.</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:col-span-2">
+                            <h4 class="font-bold text-gray-900 mb-2"><i class="fa-solid fa-thumbtack text-uni-maroon mr-2"></i> Próxima Presentación</h4>
+                            <div class="bg-gray-100 rounded-lg p-4 flex gap-4 items-center">
+                                <div class="w-16 h-16 bg-white rounded-lg shadow flex flex-col justify-center items-center shrink-0">
+                                    <span class="text-xs font-bold text-red-500 uppercase">Oct</span>
+                                    <span class="text-xl font-black text-gray-900">30</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900">Taller: Conociendo a los Elencos Culturales</p>
+                                    <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> Museo Eduardo de Habich • 3:00 P.M.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVIDAD SOCIAL CON IMÁGENES -->
+                    <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                <i class="fa-brands fa-facebook text-blue-600 text-xl"></i> Actividad Reciente
+                            </h4>
+                            <span class="text-[10px] text-gray-400">Actualizado hace 5 min</span>
+                        </div>
+                        <div id="actividad-social" class="space-y-4">
+                            <!-- Generado dinámicamente por JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB MIS ELENCOS -->
+                <div id="tab-mielenco" class="hidden fade-in space-y-6">
+                    <section class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm" aria-labelledby="horario-elencos-titulo">
+                        <h3 id="horario-elencos-titulo" class="text-xl font-black text-gray-900"><i class="fa-solid fa-calendar-days text-uni-maroon mr-2" aria-hidden="true"></i> Mi horario de ensayos</h3>
+                        <p class="text-sm text-gray-500 mt-2">Aquí aparecen todos tus elencos matriculados, con sus días y horas de ensayo. Horas en formato de 24 horas.</p>
+                        <div id="horario-elencos-leyenda" class="flex flex-wrap gap-3 my-4" aria-label="Colores de los elencos"></div>
+                        <p class="text-xs text-gray-500 mb-3">Desliza horizontalmente para ver toda la semana si lo necesitas.</p>
+                        <div class="overflow-x-auto rounded-xl border border-gray-200" tabindex="0" role="region" aria-label="Horario semanal de ensayos">
+                            <div id="horario-elencos" class="horario-semanal"></div>
+                        </div>
+                    </section>
+                    <div id="elencos-pills" class="flex flex-wrap gap-2 border-b border-gray-200 pb-4">
+                    </div>
+
+                    <div id="active-elenco-view" class="space-y-6">
+                        <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-6 items-start">
+                            <img id="mielenco-img" src="" class="w-32 h-32 object-cover rounded-xl shadow-md shrink-0">
+                            <div class="flex-1">
+                                <span class="bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider mb-2 inline-block">Matrícula Activa</span>
+                                <h3 id="mielenco-nombre" class="text-3xl font-black text-gray-900">Nombre del Elenco</h3>
+                                <p id="mielenco-horario" class="text-gray-600 mt-2 font-medium"><i class="fa-solid fa-clock text-uni-maroon mr-2"></i> Horario de Ensayo</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                                <h4 class="text-lg font-black text-gray-900 mb-4"><i class="fa-solid fa-envelope-open-text text-uni-maroon mr-2"></i> Justificar Inasistencia / Tardanza</h4>
+                                <p class="text-xs text-gray-500 mb-4">Envía tu justificación directamente al director del elenco activo.</p>
+                                <textarea id="justificacion-textarea" placeholder="Escribe el motivo detallado de tu falta o tardanza..." class="w-full bg-gray-50 border border-gray-300 rounded-xl p-4 text-sm outline-none focus:border-uni-maroon h-32 resize-none mb-3 text-gray-900"></textarea>
+                                <button onclick="enviarJustificacion()" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl transition-colors">
+                                    Enviar Justificación Oficial
+                                </button>
+                            </div>
+
+                            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm flex flex-col h-80">
+                                <div class="p-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+                                    <h4 class="font-bold text-gray-900"><i class="fa-solid fa-comments text-uni-maroon mr-2"></i> Sala de Chat Oficial</h4>
+                                </div>
+                                <div class="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50/50">
+                                    <div class="flex gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-uni-maroon text-white flex items-center justify-center text-xs font-bold shrink-0">D</div>
+                                        <div class="bg-white border border-gray-200 p-3 rounded-r-xl rounded-bl-xl shadow-sm">
+                                            <p class="text-[10px] font-bold text-gray-400 mb-1">Director Artístico</p>
+                                            <p class="text-xs text-gray-700">Estimados estudiantes, registren sus asistencias a través de esta intranet para evitar alertas automáticas de deserción.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-3 border-t border-gray-100">
+                                    <div class="relative">
+                                        <input type="text" placeholder="Escribe un mensaje al grupo..." class="w-full bg-gray-100 border-none rounded-full pl-4 pr-10 py-2 text-sm text-gray-900 outline-none">
+                                        <i class="fa-solid fa-paper-plane absolute right-4 top-2.5 text-uni-maroon cursor-pointer"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ==================== CONFIGURACIÓN ====================
+        const elencos = [
+            { id: 1, nombre: 'CONJUNTO DE DANZAS ALTIPLANICAS', img: 'imágenes/danzas altiplanicas.jpg', horarioTxt: 'Miércoles, Viernes y Sábado 6:00 PM - 9:00 PM', ensayo: { inicio: '18:00', fin: '21:00' }, slots: ['Miércoles-18:00', 'Miércoles-20:00', 'Viernes-18:00', 'Viernes-20:00', 'Sábado-18:00', 'Sábado-20:00'] },
+            { id: 2, nombre: 'TEATRO DE LA UNI', img: 'imágenes/teatro uni.jpg', horarioTxt: 'Martes y Jueves 6:00 PM - 8:00 PM', ensayo: { inicio: '18:00', fin: '20:00' }, slots: ['Martes-18:00', 'Jueves-18:00'] },
+            { id: 3, nombre: 'CORO POLIFÓNICO', img: 'imágenes/coro UNI.jpg', horarioTxt: 'Lunes y Miércoles 4:00 PM - 6:00 PM', ensayo: { inicio: '16:00', fin: '18:00' }, slots: ['Lunes-16:00', 'Miércoles-16:00'] },
+            { id: 4, nombre: 'TUNA UNI', img: 'imágenes/TUNA.jpg', horarioTxt: 'Jueves y Sábado 8:00 PM - 10:00 PM', ensayo: { inicio: '20:00', fin: '22:00' }, slots: ['Jueves-20:00', 'Sábado-20:00'] },
+            { id: 5, nombre: 'CENTRO CULTURAL ANIME Y MANGA', img: 'imágenes/centro cultuarl de naime y manga.jpg', horarioTxt: 'Viernes 6:00 PM - 8:00 PM', ensayo: { inicio: '18:00', fin: '20:00' }, slots: ['Viernes-18:00'] },
+            { id: 6, nombre: 'CONJUNTO DE ZAMPOÑAS Y DANZAS', img: 'imágenes/conjunto de zampoñas y danzas uni.jpg', horarioTxt: 'Jueves y Sábado 6:00 PM - 8:00 PM', ensayo: { inicio: '18:00', fin: '20:00' }, slots: ['Jueves-18:00', 'Sábado-18:00'] },
+            { id: 7, nombre: 'CENTRO CULTURAL FOLKLORICO', img: 'imágenes/centro cultural folklorico.jpg', horarioTxt: 'Lunes y Viernes 6:00 PM - 8:00 PM', ensayo: { inicio: '18:00', fin: '20:00' }, slots: ['Lunes-18:00', 'Viernes-18:00'] },
+            { id: 8, nombre: 'ORQUESTA SINFÓNICO', img: 'imágenes/orquesta UNI.jpg', horarioTxt: 'Martes y Jueves 4:00 PM - 6:00 PM', ensayo: { inicio: '16:00', fin: '18:00' }, slots: ['Martes-16:00', 'Jueves-16:00'] }
+        ];
+
+        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const horas = ['14:00', '16:00', '18:00', '20:00'];
+
+        let horarioAlumno = new Set();
+        let elencosSeleccionadosIds = new Set();
+        let elcoActivoId = null;
+
+        // ==================== LOGIN ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar actividad social al inicio
+            cargarActividadSocial();
+
+            // Generar grid de horario
+            generarGridHorario();
+
+            // Verificar si hay datos guardados
+            if(localStorage.getItem('ccuni_matriculas_multiples')) {
+                const guardados = JSON.parse(localStorage.getItem('ccuni_matriculas_multiples'));
+                if(guardados.length > 0) {
+                    elencosSeleccionadosIds = new Set(guardados);
+                    cargarIntranet();
+                }
+            }
+        });
+
+        // Evento de login
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+
+            if(email && password) {
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('view-horario').classList.remove('hidden');
+            } else {
+                alert("Por favor, ingresa tu correo y contraseña.");
+            }
+        });
+
+        // ==================== HORARIO ====================
+        function generarGridHorario() {
+            const grid = document.getElementById('grid-horario');
+            grid.innerHTML = '';
+            horas.forEach(hora => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-7 gap-2 items-center';
+                row.innerHTML = `<div class="text-xs font-bold text-gray-400 text-center">${hora}</div>`;
+
+                dias.forEach(dia => {
+                    const btn = document.createElement('button');
+                    btn.className = 'slot-btn border border-gray-200 rounded-lg p-3 text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors bg-white shadow-sm';
+                    btn.innerText = 'Libre';
+                    btn.onclick = function() {
+                        const slot = `${dia}-${hora}`;
+                        if (horarioAlumno.has(slot)) {
+                            horarioAlumno.delete(slot);
+                            this.classList.remove('active');
+                            this.innerText = 'Libre';
+                        } else {
+                            horarioAlumno.add(slot);
+                            this.classList.add('active');
+                            this.innerText = 'Ocupado';
+                        }
+                    };
+                    row.appendChild(btn);
+                });
+                grid.appendChild(row);
+            });
+        }
+
+        // ==================== MATCHMAKING ====================
+        function procesarMatchmaking() {
+            document.getElementById('view-horario').classList.add('hidden');
+            document.getElementById('view-match').classList.remove('hidden');
+            renderizarTarjetasElencos();
+        }
+
+        function renderizarTarjetasElencos() {
+            const container = document.getElementById('elencos-container');
+            container.innerHTML = '';
+
+            elencos.forEach(elenco => {
+                const chocaConAlumno = elenco.slots.some(slot => horarioAlumno.has(slot));
+
+                let chocaConOtroElenco = false;
+                if (!elencosSeleccionadosIds.has(elenco.id)) {
+                    elencosSeleccionadosIds.forEach(idSel => {
+                        const yaSel = elencos.find(e => e.id === idSel);
+                        if (yaSel && yaSel.slots.some(s => elenco.slots.includes(s))) {
+                            chocaConOtroElenco = true;
+                        }
+                    });
+                }
+
+                const esSeleccionado = elencosSeleccionadosIds.has(elenco.id);
+
+                const card = document.createElement('div');
+                card.id = `card-${elenco.id}`;
+                card.className = `elenco-card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col ${esSeleccionado ? 'border-uni-maroon ring-2 ring-uni-maroon/20 bg-red-50/20' : ''}`;
+
+                let badge = '';
+                let btnHtml = '';
+
+                if (chocaConAlumno) {
+                    badge = `<div class="bg-red-100 text-red-600 p-3 text-center text-xs font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Cruce con tus Clases</div>`;
+                    btnHtml = `<button disabled class="w-full bg-gray-200 text-gray-400 font-bold py-3 text-sm cursor-not-allowed">No Disponible</button>`;
+                } else if (chocaConOtroElenco) {
+                    badge = `<div class="bg-amber-100 text-amber-700 p-3 text-center text-xs font-bold"><i class="fa-solid fa-circle-exclamation mr-1"></i> Cruce con Elenco Seleccionado</div>`;
+                    btnHtml = `<button disabled class="w-full bg-gray-200 text-gray-400 font-bold py-3 text-sm cursor-not-allowed">Incompatible</button>`;
+                } else {
+                    badge = esSeleccionado
+                        ? `<div class="bg-uni-maroon text-white p-3 text-center text-xs font-bold"><i class="fa-solid fa-square-check mr-1"></i> Seleccionado para Matrícula</div>`
+                        : `<div class="bg-emerald-100 text-emerald-700 p-3 text-center text-xs font-bold"><i class="fa-solid fa-check-circle mr-1"></i> Horario Libre</div>`;
+
+                    btnHtml = esSeleccionado
+                        ? `<button onclick="toggleSeleccionElenco(${elenco.id})" class="w-full bg-gray-800 hover:bg-black text-white font-bold py-3 text-sm transition-colors shadow-md">Quitar Selección</button>`
+                        : `<button onclick="toggleSeleccionElenco(${elenco.id})" class="w-full bg-uni-maroon hover:bg-uni-dark text-white font-bold py-3 text-sm transition-colors shadow-md">Seleccionar Elenco</button>`;
+                }
+
+                card.innerHTML = `
+                    <div class="h-40 bg-gray-900 flex items-center justify-center p-4">
+                        <img src="${elenco.img}" alt="${elenco.nombre}" class="max-h-full max-w-full object-contain" onerror="this.src='https://via.placeholder.com/150/800000/FFFFFF?text=Logo'">
+                    </div>
+                    ${badge}
+                    <div class="p-5 flex-1 flex flex-col">
+                        <h4 class="font-black text-gray-900 text-sm mb-2 leading-tight">${elenco.nombre}</h4>
+                        <p class="text-xs text-gray-500 font-medium mt-auto"><i class="fa-solid fa-calendar-days text-uni-maroon mr-1"></i> ${elenco.horarioTxt}</p>
+                    </div>
+                    ${btnHtml}
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('selected-count').innerText = elencosSeleccionadosIds.size;
+        }
+
+        function toggleSeleccionElenco(id) {
+            if (elencosSeleccionadosIds.has(id)) {
+                elencosSeleccionadosIds.delete(id);
+            } else {
+                elencosSeleccionadosIds.add(id);
+            }
+            renderizarTarjetasElencos();
+        }
+
+        function finalizarMatricula() {
+            if (elencosSeleccionadosIds.size === 0) {
+                alert("Por favor, selecciona al menos un elenco cultural para proceder con la matrícula.");
+                return;
+            }
+            const arr = Array.from(elencosSeleccionadosIds);
+            localStorage.setItem('ccuni_matriculas_multiples', JSON.stringify(arr));
+            cargarIntranet();
+        }
+
+        // ==================== INTRANET ====================
+        function cargarIntranet() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-horario').classList.add('hidden');
+            document.getElementById('view-match').classList.add('hidden');
+            document.getElementById('view-intranet').classList.remove('hidden');
+
+            const arrIds = Array.from(elencosSeleccionadosIds);
+            document.getElementById('sidebar-count').innerText = arrIds.length;
+
+            const pillsContainer = document.getElementById('elencos-pills');
+            pillsContainer.innerHTML = '';
+
+            if (arrIds.length > 0) {
+                elcoActivoId = arrIds[0];
+            }
+
+            arrIds.forEach((id) => {
+                const elenco = elencos.find(e => e.id === id);
+                if (elenco) {
+                    const btn = document.createElement('button');
+                    btn.id = `pill-${id}`;
+                    btn.className = `px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${id === elcoActivoId ? 'bg-uni-maroon text-white border-uni-maroon' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`;
+                    btn.innerText = elenco.nombre;
+                    btn.onclick = () => cambiarElencoActivoView(id);
+                    pillsContainer.appendChild(btn);
+                }
+            });
+
+            renderizarHorarioElencos();
+            actualizarVistaElencoActivo();
+        }
+
+        function renderizarHorarioElencos() {
+            const calendario = document.getElementById('horario-elencos');
+            const leyenda = document.getElementById('horario-elencos-leyenda');
+            calendario.replaceChildren();
+            leyenda.replaceChildren();
+
+            const colores = [
+                ['#fff1f2', '#9f1239'], ['#eff6ff', '#1e40af'],
+                ['#ecfdf5', '#065f46'], ['#faf5ff', '#6b21a8'],
+                ['#fff7ed', '#9a3412'], ['#ecfeff', '#155e75'],
+                ['#fdf2f8', '#9d174d'], ['#eef2ff', '#3730a3']
+            ];
+            const inicioCalendario = 16 * 60;
+            const finCalendario = 22 * 60;
+            const minutos = hora => {
+                const [h, m] = hora.split(':').map(Number);
+                return h * 60 + m;
+            };
+
+            ['Hora', ...dias].forEach((dia, columna) => {
+                const cabecera = document.createElement('div');
+                cabecera.className = 'horario-dia';
+                cabecera.style.gridColumn = columna + 1;
+                cabecera.style.gridRow = 1;
+                cabecera.textContent = dia;
+                calendario.appendChild(cabecera);
+            });
+
+            for (let minuto = inicioCalendario; minuto <= finCalendario; minuto += 30) {
+                const fila = 2 + (minuto - inicioCalendario) / 30;
+                if (minuto % 60 === 0) {
+                    const hora = document.createElement('div');
+                    hora.className = 'horario-hora';
+                    hora.style.gridColumn = 1;
+                    hora.style.gridRow = fila;
+                    hora.textContent = `${String(minuto / 60).padStart(2, '0')}:00`;
+                    calendario.appendChild(hora);
+                }
+                if (minuto === finCalendario) break;
+                dias.forEach((dia, indice) => {
+                    const celda = document.createElement('div');
+                    celda.className = 'horario-celda';
+                    celda.style.gridColumn = indice + 2;
+                    celda.style.gridRow = fila;
+                    celda.setAttribute('aria-hidden', 'true');
+                    calendario.appendChild(celda);
+                });
+            }
+
+            elencos.filter(elenco => elencosSeleccionadosIds.has(elenco.id)).forEach(elenco => {
+                const [fondo, color] = colores[elenco.id - 1];
+                const etiqueta = document.createElement('span');
+                etiqueta.className = 'px-3 py-1 rounded-full text-xs font-bold';
+                etiqueta.style.backgroundColor = fondo;
+                etiqueta.style.color = color;
+                etiqueta.textContent = elenco.nombre;
+                leyenda.appendChild(etiqueta);
+
+                // Los slots determinan los días; el intervalo conserva la hora exacta de fin.
+                const diasEnsayo = new Set(elenco.slots.map(slot => slot.split('-')[0]));
+                diasEnsayo.forEach(dia => {
+                    const bloque = document.createElement('div');
+                    bloque.className = 'horario-ensayo';
+                    bloque.style.backgroundColor = fondo;
+                    bloque.style.color = color;
+                    bloque.style.borderColor = color;
+                    bloque.style.gridColumn = dias.indexOf(dia) + 2;
+                    const filaInicio = 2 + (minutos(elenco.ensayo.inicio) - inicioCalendario) / 30;
+                    const filaFin = 2 + (minutos(elenco.ensayo.fin) - inicioCalendario) / 30;
+                    bloque.style.gridRow = `${filaInicio} / ${filaFin}`;
+                    bloque.setAttribute('aria-label', `${elenco.nombre}, ${dia}, de ${elenco.ensayo.inicio} a ${elenco.ensayo.fin}`);
+                    const nombre = document.createElement('strong');
+                    nombre.textContent = elenco.nombre;
+                    const horario = document.createElement('span');
+                    horario.textContent = `${elenco.ensayo.inicio} – ${elenco.ensayo.fin}`;
+                    bloque.append(nombre, horario);
+                    calendario.appendChild(bloque);
+                });
+            });
+        }
+
+        function cambiarElencoActivoView(id) {
+            elcoActivoId = id;
+            const arrIds = Array.from(elencosSeleccionadosIds);
+            arrIds.forEach(idBtn => {
+                const btn = document.getElementById(`pill-${idBtn}`);
+                if(btn) {
+                    if(idBtn === elcoActivoId) {
+                        btn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border bg-uni-maroon text-white border-uni-maroon";
+                    } else {
+                        btn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border bg-white text-gray-600 border-gray-200 hover:bg-gray-50";
+                    }
+                }
+            });
+            actualizarVistaElencoActivo();
+        }
+
+        function actualizarVistaElencoActivo() {
+            const elenco = elencos.find(e => e.id === elcoActivoId);
+            if(elenco) {
+                document.getElementById('mielenco-nombre').innerText = elenco.nombre;
+                document.getElementById('mielenco-horario').innerHTML = `<i class="fa-solid fa-clock text-uni-maroon mr-2"></i> Ensayos Oficiales: ${elenco.horarioTxt}`;
+                document.getElementById('mielenco-img').src = elenco.img;
+            }
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-inicio').classList.add('hidden');
+            document.getElementById('tab-mielenco').classList.add('hidden');
+
+            document.getElementById('nav-inicio').className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 hover:text-uni-maroon transition-all";
+            document.getElementById('nav-mielenco').className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 hover:text-uni-maroon transition-all";
+
+            if(tabId !== 'creditos') {
+                document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+                document.getElementById(`nav-${tabId}`).className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-uni-maroon text-white shadow-md transition-all";
+            } else {
+                alert("Módulo de créditos extracurriculares en desarrollo.");
+            }
+        }
+
+        function resetearSistema() {
+            if(confirm('¿Estás seguro de que quieres cerrar sesión y resetear todos los datos?')) {
+                localStorage.removeItem('ccuni_matriculas_multiples');
+                location.reload();
+            }
+        }
+
+        // ==================== JUSTIFICACIÓN ====================
+        function enviarJustificacion() {
+            const textarea = document.getElementById('justificacion-textarea');
+            if(textarea.value.trim() === "") {
+                alert("Por favor, escribe el motivo de tu justificación.");
+                return;
+            }
+
+            alert("✅ Justificación enviada exitosamente al Director. Se ha registrado en el historial.");
+            textarea.value = "";
+        }
+
+        // ==================== ACTIVIDAD SOCIAL (imágenes locales, sin dependencia de CDN externo) ====================
+        function cargarActividadSocial() {
+            const actividades = [
+                {
+                    user: "Coordinación CCUNI",
+                    time: "Hace 10 min",
+                    texto: "¡Estamos en plena preparación para el Festival de Tunas! Sigue nuestra cuenta oficial para ver el detrás de escena.",
+                    imagen: "imágenes/TUNA.jpg"
+                },
+                {
+                    user: "Coordinación CCUNI",
+                    time: "Hace 3 horas",
+                    texto: "Ensayo general del Conjunto de Danzas Altiplánicas rumbo a la presentación de aniversario.",
+                    imagen: "imágenes/danzas altiplanicas.jpg"
+                },
+                {
+                    user: "Coordinación CCUNI",
+                    time: "Ayer",
+                    texto: "Nuevas inscripciones abiertas para el Coro Polifónico. ¡Anímate a formar parte!",
+                    imagen: "imágenes/coro UNI.jpg"
+                }
+            ];
+
+            const cont = document.getElementById('actividad-social');
+            if (!cont) return;
+            cont.innerHTML = '';
+
+            actividades.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card bg-gray-50 border border-gray-200 rounded-xl p-4';
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 bg-uni-maroon rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            ${post.user.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm text-gray-900">${post.user}</p>
+                            <p class="text-[10px] text-gray-500">${post.time}</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-700 mb-3">${post.texto}</p>
+                    <img src="${post.imagen}" alt="Publicación" class="post-img" onerror="this.style.display='none'">
+                `;
+                cont.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
